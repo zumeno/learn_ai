@@ -6,7 +6,7 @@ DB_STORE_PATH = os.path.join(DIRECTORY_CONTAINING_SCRIPT, 'db')
 
 chroma_client = chromadb.PersistentClient(path=DB_STORE_PATH)
 
-def create_collection(name):
+def get_or_create_collection(name):
     collection = chroma_client.get_or_create_collection(name=name)
     return collection
 

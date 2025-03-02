@@ -2,10 +2,8 @@ from chroma import *
 from huggingface import *
 from utils import *
 
-file_path = ""
-question = ""
-
-def store_document(collection, file_path):
+def store_document(collection_name, file_path):
+    collection = get_or_create_collection(collection_name)
     text = ""
     if file_path.lower().endswith(".docx"):
         text = read_docx(file_path)
@@ -21,12 +19,3 @@ def store_document(collection, file_path):
             metadatas={"Summary" : summarized_text},
             ids=str(collection.count()+1000),
         )
-
-def answer_question(collection, question):
-    context = get_context(collection, question)
-    answer = gemma7b_response(context, question)
-    return answer
-
-collection = create_collection("")
-store_document(collection, file_path)
-answer = answer_question(collection, question)
