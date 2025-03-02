@@ -2,8 +2,8 @@ from chroma import *
 from huggingface import *
 from utils import *
 
-def store_document(collection_name, file_path):
-    collection = get_or_create_collection(collection_name)
+def store_document(username, collection_name, file_path):
+    collection = get_or_create_collection(f"{username}.collection_name.text")
     text = ""
     if file_path.lower().endswith(".docx"):
         text = read_docx(file_path)
@@ -15,7 +15,7 @@ def store_document(collection_name, file_path):
             
     for text in texts:
         collection.add(
-            documents=text,
+            text=text,
             metadatas={"Summary" : summarized_text},
             ids=str(collection.count()+1000),
         )

@@ -15,10 +15,10 @@ text_splitter = TokenTextSplitter(chunk_size=3000, chunk_overlap=0)
 def generate_gemma7b_response(context, instruction, question, response_key):
     template = f"""
     ###guideline: Never mention that you were given a context or instructions. Respond naturally as if you are directly addressing the user.Also remember that you are not responding to anyone except the user.
-    ###context:{context},
+    ###context:{context}
     ###instruction:{instruction}
     ###length: short
-    ###question:{question},
+    ###question:{question}
     {response_key}:
     """
     response = gemma7b(template, temperature=0.3, max_new_token=1000)
@@ -60,6 +60,16 @@ def gemma7b_check_verdict(context, question, user_answer, feedback):
     - Do NOT provide additional explanations.
     """
     return generate_gemma7b_response(context, f"{question}\n###user_answer:{user_answer}\n###feedback{feedback}", instruction, "###verdict")
+
+def create_questions(context):
+    template = f"""
+    ###context:{context}
+    ###instruction:Make just enough questions that the user can know every concept in the context without having ever read it before and seperate each question with ?
+    ###length: short
+    ###question:
+    """
+    response = gemma7b(template, temperature=0.3, max_new_token=1000)
+    return response.rsplit("###question:", 1)[-1].strip()
 
 def text_summarize(input_text):
     response = text_summarizer(str(input_text))
