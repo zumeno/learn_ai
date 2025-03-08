@@ -1,5 +1,5 @@
 from chroma import *
-from gemma import *
+from ai import *
 from utils import *
 import time, random
 
