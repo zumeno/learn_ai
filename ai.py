@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 from huggingface_hub import login
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, AutoModelForSeq2SeqLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSeq2SeqLM, T5Tokenizer 
 import torch
 import os
 import nltk
@@ -9,47 +9,38 @@ from nltk.tokenize import sent_tokenize
 load_dotenv()
 
 HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
+os.environ['HUGGINGFACEHUB_API_TOKEN'] = HUGGINGFACEHUB_API_TOKEN
 login(HUGGINGFACEHUB_API_TOKEN)
 
 nltk.download("punkt")
 nltk.download('punkt_tab')
 
-gemma_model, gemma_tokenizer = initialize_gemma() 
-t5_small_squad2_model, t5_small_squad2_tokenizer = initialize_t5_small_squad2()
-t5_base_model, t5_base_tokenizer = initialize_t5_base()
-
 def initialize_gemma():
     model_name = "google/gemma-2-2b-it"
-    quant_config = BitsAndBytesConfig(load_in_4bit=True)
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name, quantization_config=quant_config, device_map="auto")
-
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    model.to(device)
+    model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto")
 
     return model, tokenizer
 
 def initialize_t5_small_squad2():
     model_name = "allenai/t5-small-squad2-question-generation"  
-    quant_config = BitsAndBytesConfig(load_in_4bit=True)  
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForSeq2SeqLM.from_pretrained(model_name, quantization_config=quant_config, device_map="auto")
+    tokenizer = T5Tokenizer.from_pretrained(model_name)
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_name, device_map="auto")
 
     return model, tokenizer
 
 def initialize_t5_base():
-    model_name = "t5-base"  
-    quant_config = BitsAndBytesConfig(load_in_4bit=True)  
+    model_name = "google-t5/t5-base"  
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForSeq2SeqLM.from_pretrained(model_name, quantization_config=quant_config, device_map="auto")
+    tokenizer = T5Tokenizer.from_pretrained(model_name)
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_name, device_map="auto")
 
     return model, tokenizer
 
 def ai_generate(model, tokenizer, input_text):
-    inputs = tokenizer(input_text, return_tensors="pt").to("cuda")
+    inputs = tokenizer(input_text, return_tensors="pt")
 
     output = model.generate(
         **inputs,
@@ -74,6 +65,15 @@ def ai_response(model, tokenizer, context, instruction, question, response_key):
     response = ai_generate(model, tokenizer, template) 
 
     return response.rsplit(response_key + ":", 1)[-1].strip()
+
+def ai_answer(model, tokenizer, context, question):
+    instruction = """
+    Answer the question using only the given information.
+    - If the correct answer is present in the context, provide it concisely.
+    - If the correct answer is NOT in the context, respond with exactly: 'I am not aware about it.'
+    - Do NOT mention the context or refer to external sources.
+    """
+    return ai_response(model, tokenizer, context, instruction, question, "###answer")
 
 def ai_hint(model, tokenizer, context, question):
     instruction = """
@@ -114,18 +114,25 @@ def create_question(model, tokenizer, sentence):
     """
     response = ai_generate(model, tokenizer, template)
     
-    return response.rsplit("###question:", 1)[-1].strip().split("?")
+    return response.rsplit("###question:", 1)[-1].strip()
 
 def generate_questions_and_answers(question_model, question_tokenizer, answer_model, answer_tokenizer, context):
     qa_pairs = {}
-
     sentences = sent_tokenize(context) 
 
-    for sentence in sentence:
-        question = create_question(question_ai, question_tokenizer, sentence)
-        answer = ai_response(answer_model, answer_tokenizer, context, instruction, question, response_key)  
+    for sentence in sentences:
+        question = create_question(question_model, question_tokenizer, sentence)
+        answer = ai_answer(answer_model, answer_tokenizer, context, question)  
+
+        print(question)
+        print(answer)
         
         qa_pairs[question] = answer  
 
+    print("Finished generating questions and answers.")
+
     return qa_pairs
 
+gemma_model, gemma_tokenizer = initialize_gemma() 
+t5_small_squad2_model, t5_small_squad2_tokenizer = initialize_t5_small_squad2()
+t5_base_model, t5_base_tokenizer = initialize_t5_base()

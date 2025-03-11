@@ -43,3 +43,4 @@ def store_qa_pairs(tier, username, collection_name, file_path):
             documents=question,  
             metadatas={"answer": answer},  
             ids=str(collection.count() + 1000),  
+        )
