@@ -45,7 +45,7 @@ def ai_generate(input_text):
     with autocast():  
         output = model.generate(
             **inputs,
-            max_new_tokens=1024,
+            max_new_tokens=8192,
     )
 
     return tokenizer.decode(output[0], skip_special_tokens=True)
@@ -117,7 +117,7 @@ def split_into_chunks(text, chunk_size):
 
     return chunks
 
-def generate_questions_and_answers(context, chunk_size=1024, batch_size=4):
+def generate_questions_and_answers(context, chunk_size=8192, batch_size=4):
     chunks = split_into_chunks(context, chunk_size)
     qa_pairs = {}
 
