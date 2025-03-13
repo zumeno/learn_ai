@@ -17,7 +17,7 @@ os.environ['HUGGINGFACEHUB_API_TOKEN'] = HUGGINGFACEHUB_API_TOKEN
 login(HUGGINGFACEHUB_API_TOKEN)
 
 def initialize_model():
-    model_name = "distilbert/distilgpt2"
+    model_name = "allenai/longformer-base-4096"
     
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -36,7 +36,7 @@ def ai_generate(input_text):
     with autocast():  
         output = model.generate(
             **inputs,
-            max_new_tokens=2048,
+            max_new_tokens=1024,
             num_beams=1,  
             do_sample=False,  
             temperature=1.0,  
@@ -113,7 +113,7 @@ def split_into_chunks(text, chunk_size):
 
     return chunks
 
-def generate_questions_and_answers(context, chunk_size=8192, batch_size=4):
+def generate_questions_and_answers(context, chunk_size=4096, batch_size=4):
     chunks = split_into_chunks(context, chunk_size)
     qa_pairs = {}
 
