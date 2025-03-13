@@ -17,16 +17,9 @@ os.environ['HUGGINGFACEHUB_API_TOKEN'] = HUGGINGFACEHUB_API_TOKEN
 login(HUGGINGFACEHUB_API_TOKEN)
 
 def initialize_model():
-    model_name = "FacebookAI/roberta-base"
+    model_name = "distilbert/distilgpt2"
     
     device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_compute_dtype=torch.float16, 
-        bnb_4bit_use_double_quant=True,  
-        bnb_4bit_quant_type="nf4"  
-    )
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
