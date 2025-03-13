@@ -1,7 +1,8 @@
 from dotenv import load_dotenv
 from huggingface_hub import login
-from transformers import AutoTokenizer, AutoModelForCausalLM 
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig 
 import torch
+import torch.nn.utils.prune as prune
 from torch.cuda.amp import autocast
 import torch._dynamo
 from nltk.tokenize import sent_tokenize
@@ -16,17 +17,57 @@ HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
 os.environ['HUGGINGFACEHUB_API_TOKEN'] = HUGGINGFACEHUB_API_TOKEN
 login(HUGGINGFACEHUB_API_TOKEN)
 
+def apply_pruning(model, amount=0.2):
+    parameters_to_prune = []
+    for name, module in model.named_modules():
+        if isinstance(module, torch.nn.Linear):
+            parameters_to_prune.append((module, 'weight'))
+
+    prune.global_unstructured(
+        parameters_to_prune,
+        pruning_method=prune.L1Unstructured,
+        amount=amount,
+    )
+
+    for module, param in parameters_to_prune:
+        prune.remove(module, 'weight')
+
+    return model
+
+def apply_low_rank_factorization(model, rank=10):
+    for name, module in model.named_modules():
+        if isinstance(module, torch.nn.Linear):
+            weight = module.weight.data
+            U, S, V = torch.svd(weight)
+            U = U[:, :rank]
+            S = S[:rank]
+            V = V[:, :rank]
+            low_rank_weight = torch.mm(U, torch.mm(torch.diag(S), V.t()))
+            module.weight = torch.nn.Parameter(low_rank_weight)
+    return model
+
 def initialize_model():
-    model_name = "allenai/longformer-base-4096"
+    model_name = "google/gemma-3-1b-it"
     
     device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_compute_dtype=torch.float16, 
+        bnb_4bit_use_double_quant=True,  
+        bnb_4bit_quant_type="nf4"  
+    )
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
+        quantization_config=bnb_config,
         device_map="balanced"
     )
+
+    model = apply_low_rank_factorization(model, rank=10)
+    model = apply_pruning(model, amount=0.2)
     
     return model, tokenizer, device
 
@@ -36,7 +77,7 @@ def ai_generate(input_text):
     with autocast():  
         output = model.generate(
             **inputs,
-            max_new_tokens=1024,
+            max_new_tokens=2048,
             num_beams=1,  
             do_sample=False,  
             temperature=1.0,  
@@ -113,7 +154,7 @@ def split_into_chunks(text, chunk_size):
 
     return chunks
 
-def generate_questions_and_answers(context, chunk_size=4096, batch_size=4):
+def generate_questions_and_answers(context, chunk_size=8192, batch_size=4):
     chunks = split_into_chunks(context, chunk_size)
     qa_pairs = {}
 
