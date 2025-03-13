@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 from huggingface_hub import login
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig 
+from transformers import AutoTokenizer, AutoModelForCausalLM 
 import torch
 import torch.nn.utils.prune as prune
 from torch.cuda.amp import autocast
@@ -18,6 +18,7 @@ os.environ['HUGGINGFACEHUB_API_TOKEN'] = HUGGINGFACEHUB_API_TOKEN
 login(HUGGINGFACEHUB_API_TOKEN)
 
 def apply_pruning(model, amount=0.2):
+    print("Pruning model...")
     parameters_to_prune = []
     for name, module in model.named_modules():
         if isinstance(module, torch.nn.Linear):
@@ -32,18 +33,26 @@ def apply_pruning(model, amount=0.2):
     for module, param in parameters_to_prune:
         prune.remove(module, 'weight')
 
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
     return model
 
 def apply_low_rank_factorization(model, rank=10):
+    print("Applying low-rank factorization...")
     for name, module in model.named_modules():
         if isinstance(module, torch.nn.Linear):
-            weight = module.weight.data
+            weight = module.weight.data.float()
             U, S, V = torch.svd(weight)
             U = U[:, :rank]
             S = S[:rank]
             V = V[:, :rank]
             low_rank_weight = torch.mm(U, torch.mm(torch.diag(S), V.t()))
             module.weight = torch.nn.Parameter(low_rank_weight)
+
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    
     return model
 
 def initialize_model():
@@ -51,24 +60,13 @@ def initialize_model():
     
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_compute_dtype=torch.float16, 
-        bnb_4bit_use_double_quant=True,  
-        bnb_4bit_quant_type="nf4"  
-    )
-
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        quantization_config=bnb_config,
-        device_map="balanced"
     )
+    model.to(device)
 
-    model = apply_low_rank_factorization(model, rank=10)
-    model = apply_pruning(model, amount=0.2)
-    
     return model, tokenizer, device
 
 def ai_generate(input_text):
@@ -200,3 +198,5 @@ def generate_questions_and_answers(context, chunk_size=8192, batch_size=4):
     return qa_pairs
 
 model, tokenizer, device = initialize_model() 
+model = apply_low_rank_factorization(model, rank=10)
+model = apply_pruning(model, amount=0.2)
