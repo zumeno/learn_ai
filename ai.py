@@ -45,8 +45,13 @@ def ai_generate(input_text):
     with autocast():  
         output = model.generate(
             **inputs,
-            max_new_tokens=8192,
-    )
+            max_new_tokens=2048,
+            num_beams=1,  
+            do_sample=False,  
+            temperature=1.0,  
+            top_p=1.0,  
+            top_k=50,
+        )
 
     return tokenizer.decode(output[0], skip_special_tokens=True)
 
