@@ -7,6 +7,7 @@ from torch.cuda.amp import autocast
 import torch._dynamo
 from nltk.tokenize import sent_tokenize
 import os
+import time
 
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 torch._dynamo.config.suppress_errors = True
@@ -17,7 +18,7 @@ HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
 os.environ['HUGGINGFACEHUB_API_TOKEN'] = HUGGINGFACEHUB_API_TOKEN
 login(HUGGINGFACEHUB_API_TOKEN)
 
-def apply_pruning_efficiently(model, amount=0.2, batch_size=5, delay=1):
+def apply_pruning(model, amount=0.2, batch_size=5, delay=1):
     print("Applying pruning efficiently...")
     parameters_to_prune = []
     
@@ -40,7 +41,6 @@ def apply_pruning_efficiently(model, amount=0.2, batch_size=5, delay=1):
         del batch
         if torch.cuda.is_available():
             torch.cuda.empty_cache()  
-        gc.collect()  
 
         time.sleep(delay)
 
