@@ -17,24 +17,34 @@ HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
 os.environ['HUGGINGFACEHUB_API_TOKEN'] = HUGGINGFACEHUB_API_TOKEN
 login(HUGGINGFACEHUB_API_TOKEN)
 
-def apply_pruning(model, amount=0.2):
-    print("Pruning model...")
+def apply_pruning_efficiently(model, amount=0.2, batch_size=5, delay=1):
+    print("Applying pruning efficiently...")
     parameters_to_prune = []
+    
     for name, module in model.named_modules():
         if isinstance(module, torch.nn.Linear):
             parameters_to_prune.append((module, 'weight'))
 
-    prune.global_unstructured(
-        parameters_to_prune,
-        pruning_method=prune.L1Unstructured,
-        amount=amount,
-    )
+    for i in range(0, len(parameters_to_prune), batch_size):
+        batch = parameters_to_prune[i:i + batch_size]
 
-    for module, param in parameters_to_prune:
-        prune.remove(module, 'weight')
+        prune.global_unstructured(
+            batch,
+            pruning_method=prune.L1Unstructured,  
+            amount=amount,
+        )
 
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
+        for module, param in batch:
+            prune.remove(module, 'weight')
+
+        del batch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()  
+        gc.collect()  
+
+        time.sleep(delay)
+
+        print(f"Processed batch {i//batch_size + 1}/{len(parameters_to_prune)//batch_size + 1}")
 
     return model
 
