@@ -18,7 +18,7 @@ os.environ['HUGGINGFACEHUB_API_TOKEN'] = HUGGINGFACEHUB_API_TOKEN
 login(HUGGINGFACEHUB_API_TOKEN)
 
 def initialize_model():
-    model_name = "google/gemma-2-2b-it"
+    model_name = "google/gemma-3-1b-it"
     
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -156,6 +156,8 @@ def generate_questions_and_answers(context, chunk_size=1024, batch_size=4):
                 if "Answer:" in qa:
                     question, answer = qa.split("Answer:", 1)
                     qa_pairs[question.strip()] = answer.strip()
+
+        torch.cuda.empty_cache()
 
     print(f"Total questions generated: {len(qa_pairs)}")
     return qa_pairs
