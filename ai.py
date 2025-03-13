@@ -7,6 +7,7 @@ import torch._dynamo
 from nltk.tokenize import sent_tokenize
 import os
 
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 torch._dynamo.config.suppress_errors = True
 
 load_dotenv()
@@ -114,7 +115,7 @@ def split_into_chunks(text, chunk_size):
 
     return chunks
 
-def generate_questions_and_answers(context, chunk_size=7000):
+def generate_questions_and_answers(context, chunk_size=1000):
     chunks = split_into_chunks(context, chunk_size)
     
     qa_pairs = {}
