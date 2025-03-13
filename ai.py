@@ -3,6 +3,7 @@ from huggingface_hub import login
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig 
 import textwrap
 import torch
+from torch.cuda.amp import autocast
 import torch._dynamo
 from nltk.tokenize import sent_tokenize
 import os
@@ -41,9 +42,10 @@ def initialize_model():
 def ai_generate(input_text):
     inputs = tokenizer(input_text, return_tensors="pt").to(device)
 
-    output = model.generate(
-        **inputs,
-        max_new_tokens=128000,
+    with autocast():  
+        output = model.generate(
+            **inputs,
+            max_new_tokens=1024,
     )
 
     return tokenizer.decode(output[0], skip_special_tokens=True)
@@ -115,43 +117,45 @@ def split_into_chunks(text, chunk_size):
 
     return chunks
 
-def generate_questions_and_answers(context, chunk_size=1000):
+def generate_questions_and_answers(context, chunk_size=1024, batch_size=4):
     chunks = split_into_chunks(context, chunk_size)
-    
     qa_pairs = {}
 
-    for i, chunk in enumerate(chunks):
-        print(f"Processing chunk {i+1}/{len(chunks)}...")  
-        
-        template = f"""
-        ###context:{chunk}
-        ###instruction:
-        Generate a set of distinct questions that comprehensively cover every concept in the context while still reducing the number of questions generated.
-        - Do NOT number the questions.
-        - Do NOT include numbering formats like 1., 2., 3. at the start of any question.
-        - Ensure each question is unique and does not repeat concepts.
-        - Separate each question with a question mark (?), ensuring proper readability.
+    for i in range(0, len(chunks), batch_size):
+        batch_chunks = chunks[i:i + batch_size]  
+        print(f"Processing batch {i//batch_size + 1}/{(len(chunks)//batch_size) + 1}...")
 
-        After generating the questions, provide detailed and accurate answers for each of them.
-        - Ensure the answers are well-structured and informative.
-        - Maintain clarity and completeness in the responses.
+        batch_responses = []
+        for chunk in batch_chunks:
+            template = f"""
+            ###context:{chunk}
+            ###instruction:
+            Generate a set of distinct questions that comprehensively cover every concept in the context while still reducing the number of questions generated.
+            - Do NOT number the questions.
+            - Do NOT include numbering formats like 1., 2., 3. at the start of any question.
+            - Ensure each question is unique and does not repeat concepts.
+            - Separate each question with a question mark (?), ensuring proper readability.
 
-        ###output_format:
-        Question: <Generated Question>
-        Answer: <Generated Answer>
+            After generating the questions, provide detailed and accurate answers for each of them.
+            - Ensure the answers are well-structured and informative.
+            - Maintain clarity and completeness in the responses.
 
-        ###length: Generate as many questions as required to fully understand the content.
-        ###qa_pairs:
-        """
-        response = ai_generate(template)  
-        
-        qa_list = response.rsplit("###qa_pairs:", 1)[-1].strip().split("Question:")
-       
-        print(qa_list)
-        for qa in qa_list:
-            if "Answer:" in qa:
-                question, answer = qa.split("Answer:", 1)
-                qa_pairs[question.strip()] = answer.strip()
+            ###output_format:
+            Question: <Generated Question>
+            Answer: <Generated Answer>
+
+            ###length: Generate as many questions as required to fully understand the content.
+            ###qa_pairs:
+            """
+            response = ai_generate(template)  
+            batch_responses.append(response)
+
+        for response in batch_responses:
+            qa_list = response.rsplit("###qa_pairs:", 1)[-1].strip().split("Question:")
+            for qa in qa_list:
+                if "Answer:" in qa:
+                    question, answer = qa.split("Answer:", 1)
+                    qa_pairs[question.strip()] = answer.strip()
 
     print(f"Total questions generated: {len(qa_pairs)}")
     return qa_pairs
