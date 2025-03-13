@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 from huggingface_hub import login
-from transformers import AutoTokenizer, AutoModelForCausalLM 
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig 
 import torch
 from torch.cuda.amp import autocast
 import torch._dynamo
@@ -17,14 +17,22 @@ os.environ['HUGGINGFACEHUB_API_TOKEN'] = HUGGINGFACEHUB_API_TOKEN
 login(HUGGINGFACEHUB_API_TOKEN)
 
 def initialize_model():
-    model_name = "unsloth/gemma-3-1b-it-bnb-4bit"
+    model_name = "FacebookAI/roberta-base"
     
     device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_compute_dtype=torch.float16, 
+        bnb_4bit_use_double_quant=True,  
+        bnb_4bit_quant_type="nf4"  
+    )
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
+        quantization_config=bnb_config,
         device_map="balanced"
     )
     
