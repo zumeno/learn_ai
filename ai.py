@@ -3,7 +3,11 @@ from huggingface_hub import login
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig 
 import textwrap
 import torch
+import torch._dynamo
+from nltk.tokenize import sent_tokenize
 import os
+
+torch._dynamo.config.suppress_errors = True
 
 load_dotenv()
 
@@ -93,8 +97,25 @@ def ai_verdict(context, question, user_answer, feedback):
     """
     return ai_response(context, f"{question}\n###user_answer:{user_answer}\n###feedback{feedback}", instruction, "###verdict")
 
-def generate_questions_and_answers(context, chunk_size=127000):
-    chunks = textwrap.wrap(context, width=chunk_size, break_long_words=False, replace_whitespace=False)
+def split_into_chunks(text, chunk_size):
+    sentences = sent_tokenize(text)
+    chunks = []
+    current_chunk = ""
+
+    for sentence in sentences:
+        if len(current_chunk) + len(sentence) <= chunk_size:
+            current_chunk += sentence + " "
+        else:
+            chunks.append(current_chunk.strip())
+            current_chunk = sentence + " "
+
+    if current_chunk:
+        chunks.append(current_chunk.strip())
+
+    return chunks
+
+def generate_questions_and_answers(context, chunk_size=7000):
+    chunks = split_into_chunks(context, chunk_size)
     
     qa_pairs = {}
 
