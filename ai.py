@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 from huggingface_hub import login
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig 
+from transformers import AutoTokenizer, AutoModelForCausalLM 
 import torch
 from torch.cuda.amp import autocast
 import torch._dynamo
@@ -25,7 +25,6 @@ def initialize_model():
 
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        quantization_config=bnb_config,
         device_map="balanced"
     )
     
