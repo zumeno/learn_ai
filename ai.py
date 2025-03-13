@@ -2,7 +2,6 @@ from dotenv import load_dotenv
 from huggingface_hub import login
 from transformers import AutoTokenizer, AutoModelForCausalLM 
 import torch
-import torch.nn.utils.prune as prune
 from torch.cuda.amp import autocast
 import torch._dynamo
 from nltk.tokenize import sent_tokenize
@@ -18,66 +17,14 @@ HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
 os.environ['HUGGINGFACEHUB_API_TOKEN'] = HUGGINGFACEHUB_API_TOKEN
 login(HUGGINGFACEHUB_API_TOKEN)
 
-def apply_pruning(model, amount=0.2, batch_size=5, delay=1):
-    print("Applying pruning efficiently...")
-    parameters_to_prune = []
-    
-    for name, module in model.named_modules():
-        if isinstance(module, torch.nn.Linear):
-            parameters_to_prune.append((module, 'weight'))
-
-    for i in range(0, len(parameters_to_prune), batch_size):
-        batch = parameters_to_prune[i:i + batch_size]
-
-        prune.global_unstructured(
-            batch,
-            pruning_method=prune.L1Unstructured,  
-            amount=amount,
-        )
-
-        for module, param in batch:
-            prune.remove(module, 'weight')
-
-        del batch
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()  
-
-        time.sleep(delay)
-
-        print(f"Processed batch {i//batch_size + 1}/{len(parameters_to_prune)//batch_size + 1}")
-
-    return model
-
-def apply_low_rank_factorization(model, rank=10):
-    print("Applying low-rank factorization...")
-    for name, module in model.named_modules():
-        if isinstance(module, torch.nn.Linear):
-            weight = module.weight.data.float()
-            U, S, V = torch.svd(weight)
-            U = U[:, :rank]
-            S = S[:rank]
-            V = V[:, :rank]
-            low_rank_weight = torch.mm(U, torch.mm(torch.diag(S), V.t()))
-            module.weight = torch.nn.Parameter(low_rank_weight)
-
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-    
-    return model
-
-def initialize_model():
-    model_name = "google/gemma-3-1b-it"
-    
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-
+def load_model_from_hub(repo_name):
+    print(f"Loading model from Hugging Face Hub: '{repo_name}'...")
+    tokenizer = AutoTokenizer.from_pretrained(repo_name)
     model = AutoModelForCausalLM.from_pretrained(
-        model_name,
+        repo_name,
+        device_map="auto",
     )
-    model.to(device)
-
-    return model, tokenizer, device
+    return model, tokenizer
 
 def ai_generate(input_text):
     inputs = tokenizer(input_text, return_tensors="pt").to(device)
@@ -207,6 +154,6 @@ def generate_questions_and_answers(context, chunk_size=8192, batch_size=4):
     print(f"Total questions generated: {len(qa_pairs)}")
     return qa_pairs
 
-model, tokenizer, device = initialize_model() 
-model = apply_low_rank_factorization(model, rank=10)
-model = apply_pruning(model, amount=0.2)
+repo_name = "arungeorgesajit /gemma-3-1b-it-optimized"      
+model, tokenizer = load_model_from_hub(repo_name)
+device = "cuda" if torch.cuda.is_available() else "cpu"
