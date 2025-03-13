@@ -1,6 +1,5 @@
 from chroma import *
-from free_ai import *
-from premium_ai import *
+from ai import *
 from utils import *
 import time, random
 from langchain_text_splitters import TokenTextSplitter
@@ -32,11 +31,7 @@ def store_qa_pairs(tier, username, collection_name, file_path):
     elif file_path.lower().endswith(".pdf"):
         text = read_pdf(file_path)
    
-    qa_pairs = {}
-    if tier == "free":
-        qa_pairs = free_generate_questions_and_answers(text)
-    elif tier == "premium":
-        qa_pairs = premium_generate_questions_and_answers(text)
+    qa_pairs = generate_questions_and_answers(text)
 
     for question, answer in qa_pairs.items():
         collection.add(
