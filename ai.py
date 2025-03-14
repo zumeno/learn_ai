@@ -1,7 +1,8 @@
 from dotenv import load_dotenv
 from huggingface_hub import login
-from transformers import AutoTokenizer, AutoModelForCausalLM 
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig 
 import torch
+from torch.nn.attention import SDPBackend, sdpa_kernel
 from torch.cuda.amp import autocast
 import torch._dynamo
 from nltk.tokenize import sent_tokenize
@@ -17,30 +18,44 @@ HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
 os.environ['HUGGINGFACEHUB_API_TOKEN'] = HUGGINGFACEHUB_API_TOKEN
 login(HUGGINGFACEHUB_API_TOKEN)
 
-def load_model_from_hub(repo_name):
-    print(f"Loading model from Hugging Face Hub: '{repo_name}'...")
-    tokenizer = AutoTokenizer.from_pretrained(repo_name)
-    model = AutoModelForCausalLM.from_pretrained(
-        repo_name,
-        device_map="auto",
+def initialize_model():
+    model_name = "google/gemma-2-2b-it"
+    
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_compute_dtype=torch.float16, 
+        bnb_4bit_use_double_quant=True,  
+        bnb_4bit_quant_type="nf4"  
     )
-    return model, tokenizer
+
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name,
+        quantization_config=bnb_config,
+        device_map="balanced"
+    )
+
+    return model, tokenizer, device
 
 def ai_generate(input_text):
     inputs = tokenizer(input_text, return_tensors="pt").to(device)
 
     with autocast():  
-        output = model.generate(
-            **inputs,
-            max_new_tokens=2048,
-            num_beams=1,  
-            do_sample=False,  
-            temperature=1.0,  
-            top_p=1.0,  
-            top_k=50,
-        )
+        with sdpa_kernel(SDPBackend.FLASH_ATTENTION):
+            outputs = model.generate(
+                **inputs,
+                max_new_tokens=2048,
+                num_beams=1,
+                do_sample=False,
+                temperature=1.0,
+                top_p=1.0,
+                top_k=50,
+            )
 
-    return tokenizer.decode(output[0], skip_special_tokens=True)
+    return tokenizer.decode(outputs[0], skip_special_tokens=True)
 
 def ai_response(context, instruction, question, response_key):
     template = f"""
@@ -115,7 +130,6 @@ def generate_questions_and_answers(context, chunk_size=8192, batch_size=4):
 
     for i in range(0, len(chunks), batch_size):
         batch_chunks = chunks[i:i + batch_size]  
-        print(f"Processing batch {i//batch_size + 1}/{(len(chunks)//batch_size) + 1}...")
 
         batch_responses = []
         for chunk in batch_chunks:
@@ -151,9 +165,6 @@ def generate_questions_and_answers(context, chunk_size=8192, batch_size=4):
 
         torch.cuda.empty_cache()
 
-    print(f"Total questions generated: {len(qa_pairs)}")
     return qa_pairs
 
-repo_name = "arungeorgesajit /gemma-3-1b-it-optimized"      
-model, tokenizer = load_model_from_hub(repo_name)
-device = "cuda" if torch.cuda.is_available() else "cpu"
+model, tokenizer, device = initialize_model()
