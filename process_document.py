@@ -1,6 +1,6 @@
-from chroma import *
-from ai import *
-from utils import *
+from learn_ai.chroma import *
+from learn_ai.ai import *
+from learn_ai.utils import *
 import time, random
 from langchain_text_splitters import TokenTextSplitter
 
