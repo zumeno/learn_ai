@@ -1,6 +1,6 @@
 from process_document import *
 
-store_qa_pairs("free", "username", "collection_name", "temp/CODE OF BUSINESS ETHICS.docx")
+store_qa_pairs("free", "username", "collection_name", "temp/A_Brief_Introduction_To_AI.pdf")
 collection = get_or_create_collection("username.collection_name.qa")
 
 question_index = 0
