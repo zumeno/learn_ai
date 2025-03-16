@@ -40,14 +40,14 @@ def initialize_model():
 
     return model, tokenizer, device
 
-def ai_generate(input_text):
+def ai_generate(input_text, max_new_tokens):
     inputs = tokenizer(input_text, return_tensors="pt").to(device)
 
     with autocast():  
         with sdpa_kernel(SDPBackend.FLASH_ATTENTION):
             outputs = model.generate(
                 **inputs,
-                max_new_tokens=2048,
+                max_new_tokens=max_new_tokens,
                 num_beams=1,
                 do_sample=False,
                 temperature=1.0,
@@ -66,7 +66,7 @@ def ai_response(context, instruction, question, response_key):
     ###question:{question}
     {response_key}:
     """
-    response = ai_generate(template) 
+    response = ai_generate(template, 248) 
 
     return response.rsplit(response_key + ":", 1)[-1].strip()
 
@@ -153,7 +153,7 @@ def generate_questions_and_answers(context, chunk_size=8192, batch_size=4):
             ###length: Generate as many questions as required to fully understand the content.
             ###qa_pairs:
             """
-            response = ai_generate(template)  
+            response = ai_generate(template, 2048)  
             batch_responses.append(response)
 
         for response in batch_responses:
