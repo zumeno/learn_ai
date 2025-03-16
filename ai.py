@@ -74,6 +74,7 @@ def ai_answer(context, question):
     - If the correct answer is present in the context, provide it concisely.
     - If the correct answer is NOT in the context, respond with exactly: 'I am not aware about it.'
     - Do NOT mention the context or refer to external sources.
+    - Make sure to always tell the answer completely
     """
     return ai_response(context, instruction, question, "###answer", 1024)
 
@@ -90,11 +91,12 @@ def ai_hint(context, question):
 
 def ai_feedback(context, question, user_answer):
     instruction = """
-    Evaluate the user's answer based on the correct answer found in the context(Note:Make sure to mention if it doesnt match with the context even if its kind of correct).
-    - Identify any missing or incorrect points in the user's answer.
-    - Provide a clear and constructive explanation of these points under the section '###feedback'.
-    - Do NOT mention that you are referring to a provided context or external text.
-    - Respond naturally as if you are 1024ectly addressing the user.
+    Evaluate the user's answer with complete objectivity and strict factual accuracy.
+    - Detect all factual errors, missing details, and inaccuracies without compromise.
+    - Directly reference the context for validation and provide detailed feedback on incorrect or incomplete points.
+    - Do NOT validate incorrect answers or offer unnecessary praise.
+    - Provide feedback in a clear, straightforward, and constructive manner under the section '###feedback'.
+    - If the answer is completely wrong, explicitly state so and explain the correct answer.
     """
     return ai_response(context, instruction, f"{question}\n###user_answer:{user_answer}", "###feedback", 1024)
 
