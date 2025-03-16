@@ -69,7 +69,7 @@ def ai_response(context, instruction, question, response_key, max_new_tokens):
     return response.rsplit(response_key + ":", 1)[-1].strip()
 
 def ai_answer(context, question):
-     instruction = """
+    instruction = """
     Answer the question using only the given information.
     - If the correct answer is present in the context, provide it concisely.
     - If the correct answer is NOT in the context, respond with exactly: 'I am not aware about it.'
