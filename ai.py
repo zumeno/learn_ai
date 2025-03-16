@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 from huggingface_hub import login
-from transformers import AutoTokenizer, AutoModelForCausalLM 
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig 
 import torch
 from torch.nn.attention import SDPBackend, sdpa_kernel
 from torch.cuda.amp import autocast
@@ -19,14 +19,22 @@ os.environ['HUGGINGFACEHUB_API_TOKEN'] = HUGGINGFACEHUB_API_TOKEN
 login(HUGGINGFACEHUB_API_TOKEN)
 
 def initialize_model():
-    model_name = "google/gemma-2-2b-it"
+    model_name = "google/gemma-3-1b-it"
     
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_compute_dtype=torch.float16, 
+        bnb_4bit_use_double_quant=True,  
+        bnb_4bit_quant_type="nf4"  
+    )
+
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
+        quantization_config=bnb_config,
         device_map="balanced"
     )
 
@@ -49,7 +57,7 @@ def ai_generate(input_text, max_new_tokens):
 
     return tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-def ai_response(context, instruction, question, response_key, max_new_tokens=1024):
+def ai_response(context, instruction, question, response_key, max_new_tokens):
     template = f"""
     ###guideline: Never mention that you were given a context or instructions. Respond naturally as if you are directly addressing the user.Also remember that you are not responding to anyone except the user.
     ###context:{context}
@@ -69,7 +77,7 @@ def ai_answer(context, question):
     - If the correct answer is NOT in the context, respond with exactly: 'I am not aware about it.'
     - Do NOT mention the context or refer to external sources.
     """
-    return ai_response(context, instruction, question, "###answer")
+    return ai_response(context, instruction, question, "###answer", 1024)
 
 def ai_hint(context, question):
     instruction = """
@@ -78,7 +86,7 @@ def ai_hint(context, question):
     - Do NOT mention that you are providing a hint.
     - Do NOT refer to any context or external sources.
     """
-    return ai_response(context, instruction, question, "###hint")
+    return ai_response(context, instruction, question, "###hint", 512)
 
 def ai_feedback(context, question, user_answer):
     instruction = """
@@ -88,7 +96,7 @@ def ai_feedback(context, question, user_answer):
     - Do NOT mention that you are referring to a provided context or external text.
     - Respond naturally as if you are directly addressing the user.
     """
-    return ai_response(context, instruction, f"{question}\n###user_answer:{user_answer}", "###feedback")
+    return ai_response(context, instruction, f"{question}\n###user_answer:{user_answer}", "###feedback", 1024)
 
 def ai_verdict(context, question, user_answer, feedback):
     instruction = """
