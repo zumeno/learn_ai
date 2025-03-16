@@ -90,7 +90,7 @@ def ai_hint(context, question):
 
 def ai_feedback(context, question, user_answer):
     instruction = """
-    Evaluate the user's answer based on the correct answer found in the context.
+    Evaluate the user's answer based on the correct answer found in the context(Note:Make sure to mention if it doesnt match with the context even if its kind of correct).
     - Identify any missing or incorrect points in the user's answer.
     - Provide a clear and constructive explanation of these points under the section '###feedback'.
     - Do NOT mention that you are referring to a provided context or external text.
