@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 from huggingface_hub import login
-from transformers import AutoTokenizer, AutoModelForCausalLM 
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig 
 import torch
 from torch.nn.attention import SDPBackend, sdpa_kernel
 from torch.cuda.amp import autocast
@@ -19,14 +19,22 @@ os.environ['HUGGINGFACEHUB_API_TOKEN'] = HUGGINGFACEHUB_API_TOKEN
 login(HUGGINGFACEHUB_API_TOKEN)
 
 def initialize_model():
-    model_name = "unsloth/gemma-2-2b-it-bnb-4bit"
+    model_name = "google/gemma-2-2b-it"
     
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_compute_dtype=torch.float16, 
+        bnb_4bit_use_double_quant=True,  
+        bnb_4bit_quant_type="nf4"  
+    )
+
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
+        quantization_config=bnb_config,
         device_map="balanced"
     )
 
@@ -39,7 +47,7 @@ def ai_generate(input_text):
         with sdpa_kernel(SDPBackend.FLASH_ATTENTION):
             outputs = model.generate(
                 **inputs,
-                max_new_tokens=2048,
+                max_new_tokens=8192,
                 num_beams=1,
                 do_sample=False,
                 temperature=1.0,
