@@ -70,10 +70,13 @@ def ai_response(context, instruction, question, response_key, max_new_tokens):
 
 def ai_answer(context, question):
     instruction = """
-    Answer the question using only the given information.
-    - If the correct answer is present in the context, provide it concisely.
-    - If the correct answer is NOT in the context, respond with exactly: 'I am not aware about it.'
-    - Do NOT mention the context or refer to external sources.
+    Provide a specific, actionable hint that helps solve the question without revealing the complete answer.
+    - The hint should point to a key concept, method, or first step needed to solve the problem.
+    - Include relevant technical details, formulas, or approaches when appropriate.
+    - Avoid generic advice like "consider the problem carefully" or "break it down."
+    - Provide concrete direction that actually advances the solution process.
+    - Do NOT mention that you are providing a hint.
+    - Do NOT refer to any context or external sources.
     """
     return ai_response(context, instruction, question, "###answer", 1024)
 
@@ -83,6 +86,8 @@ def ai_hint(context, question):
     - The hint should be useful but should not explicitly state the answer.
     - Do NOT mention that you are providing a hint.
     - Do NOT refer to any context or external sources.
+    - Keep your response concise and focused on one key insight.
+    - Do not create any new unnecessary sections we just need the hint(that means strictly no answer,questions or anything else which are not part of the hint)
     """
     return ai_response(context, instruction, question, "###hint", 512)
 
@@ -92,7 +97,7 @@ def ai_feedback(context, question, user_answer):
     - Identify any missing or incorrect points in the user's answer.
     - Provide a clear and constructive explanation of these points under the section '###feedback'.
     - Do NOT mention that you are referring to a provided context or external text.
-    - Respond naturally as if you are directly addressing the user.
+    - Respond naturally as if you are 1024ectly addressing the user.
     """
     return ai_response(context, instruction, f"{question}\n###user_answer:{user_answer}", "###feedback", 1024)
 
