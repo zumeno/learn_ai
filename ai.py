@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 from huggingface_hub import login
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig 
+from transformers import AutoTokenizer, Gemma3ForCausalLM, BitsAndBytesConfig 
 import torch
 from torch.nn.attention import SDPBackend, sdpa_kernel
 from torch.cuda.amp import autocast
@@ -32,7 +32,7 @@ def initialize_model():
         bnb_4bit_quant_type="nf4"  
     )
 
-    model = AutoModelForCausalLM.from_pretrained(
+    model = Gemma3ForCausalLM.from_pretrained(
         model_name,
         quantization_config=bnb_config,
         device_map="balanced"
