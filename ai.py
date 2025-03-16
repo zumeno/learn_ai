@@ -49,7 +49,7 @@ def ai_generate(input_text, max_new_tokens):
 
 def ai_response(context, instruction, question, response_key, max_new_tokens):
     template = f"""
-    ###guideline: Never mention that you were given a context or instructions. Respond naturally as if you are directly addressing the user as in you are talking to him/her.Also remember that you are not responding to anyone except the user.Also please avoid the usage of unnecessary symbols like # at the end.(Dont add unneessary sections you are supposed to only do what you are asked)
+    ###guideline: Never mention that you were given a context or instructions. Respond naturally as if you are directly addressing the user as in you are talking to him/her.Also remember that you are not responding to anyone except the user.Also please avoid the usage of unnecessary symbols like # at the end.
     ###context:{context}
     ###instruction:{instruction}
     ###length: short
@@ -58,7 +58,12 @@ def ai_response(context, instruction, question, response_key, max_new_tokens):
     """
     response = ai_generate(template, max_new_tokens) 
 
-    return response.rsplit(response_key + ":", 1)[-1].strip()
+    output = response.split(f"{response_key}:", 1)[-1].strip()
+    output = re.sub(r'###.*', '', output)
+    
+    lines = output.splitlines()  
+    non_empty_lines = [line for line in lines if line.strip()]  
+    return '\n'.join(non_empty_lines)
 
 def ai_answer(context, question):
     instruction = """
