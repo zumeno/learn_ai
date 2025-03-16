@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 from huggingface_hub import login
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig 
+from transformers import AutoTokenizer, AutoModelForCausalLM 
 import torch
 from torch.nn.attention import SDPBackend, sdpa_kernel
 from torch.cuda.amp import autocast
@@ -25,16 +25,8 @@ def initialize_model():
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_compute_dtype=torch.float16, 
-        bnb_4bit_use_double_quant=True,  
-        bnb_4bit_quant_type="nf4"  
-    )
-
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        quantization_config=bnb_config,
         device_map="balanced"
     )
 
@@ -86,7 +78,7 @@ def ai_hint(context, question):
     - Do NOT mention that you are providing a hint.
     - Do NOT refer to any context or external sources.
     """
-    return ai_response(context, instruction, question, "###hint", 32)
+    return ai_response(context, instruction, question, "###hint")
 
 def ai_feedback(context, question, user_answer):
     instruction = """
@@ -105,7 +97,7 @@ def ai_verdict(context, question, user_answer, feedback):
     - If the user's answer is incorrect, respond with 'Incorrect'.
     - Do NOT provide additional explanations.
     """
-    return ai_response(context, instruction, f"{question}\n###user_answer:{user_answer}\n###feedback{feedback}", "###verdict")
+    return ai_response(context, instruction, f"{question}\n###user_answer:{user_answer}\n###feedback{feedback}", "###verdict", 32)
 
 def split_into_chunks(text, chunk_size):
     sentences = sent_tokenize(text)
