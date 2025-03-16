@@ -2,7 +2,6 @@ from dotenv import load_dotenv
 from huggingface_hub import login
 from transformers import AutoTokenizer, Gemma3ForCausalLM, BitsAndBytesConfig 
 import torch
-from torch.nn.attention import SDPBackend, sdpa_kernel
 from torch.cuda.amp import autocast
 import torch._dynamo
 from nltk.tokenize import sent_tokenize
@@ -43,17 +42,16 @@ def initialize_model():
 def ai_generate(input_text, max_new_tokens):
     inputs = tokenizer(input_text, return_tensors="pt").to(device)
 
-    with autocast():  
-        with sdpa_kernel(SDPBackend.FLASH_ATTENTION):
-            outputs = model.generate(
-                **inputs,
-                max_new_tokens=max_new_tokens,
-                num_beams=1,
-                do_sample=False,
-                temperature=1.0,
-                top_p=1.0,
-                top_k=50,
-            )
+    with torch.amp.autocast('cuda'):
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=max_new_tokens,
+            num_beams=1,
+            do_sample=False,
+            temperature=1.0,
+            top_p=1.0,
+            top_k=50,
+        )
 
     return tokenizer.decode(outputs[0], skip_special_tokens=True)
 
