@@ -57,7 +57,7 @@ def ai_generate(input_text, max_new_tokens):
 
     return tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-def ai_response(context, instruction, question, response_key, max_new_tokens=248):
+def ai_response(context, instruction, question, response_key, max_new_tokens=1024):
     template = f"""
     ###guideline: Never mention that you were given a context or instructions. Respond naturally as if you are directly addressing the user.Also remember that you are not responding to anyone except the user.
     ###context:{context}
@@ -96,7 +96,7 @@ def ai_feedback(context, question, user_answer):
     - Do NOT mention that you are referring to a provided context or external text.
     - Respond naturally as if you are directly addressing the user.
     """
-    return ai_response(context, instruction, f"{question}\n###user_answer:{user_answer}", "###feedback", 512)
+    return ai_response(context, instruction, f"{question}\n###user_answer:{user_answer}", "###feedback")
 
 def ai_verdict(context, question, user_answer, feedback):
     instruction = """
