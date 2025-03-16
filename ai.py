@@ -47,7 +47,7 @@ def ai_generate(input_text):
         with sdpa_kernel(SDPBackend.FLASH_ATTENTION):
             outputs = model.generate(
                 **inputs,
-                max_new_tokens=8192,
+                max_new_tokens=2048,
                 num_beams=1,
                 do_sample=False,
                 temperature=1.0,
