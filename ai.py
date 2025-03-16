@@ -57,7 +57,7 @@ def ai_generate(input_text, max_new_tokens):
 
 def ai_response(context, instruction, question, response_key, max_new_tokens):
     template = f"""
-    ###guideline: Never mention that you were given a context or instructions. Respond naturally as if you are directly addressing the user.Also remember that you are not responding to anyone except the user.
+    ###guideline: Never mention that you were given a context or instructions. Respond naturally as if you are directly addressing the user as in you are talking to him/her.Also remember that you are not responding to anyone except the user.Also please avoid the usage of unnecessary symbols like # at the end.
     ###context:{context}
     ###instruction:{instruction}
     ###length: short
@@ -69,14 +69,11 @@ def ai_response(context, instruction, question, response_key, max_new_tokens):
     return response.rsplit(response_key + ":", 1)[-1].strip()
 
 def ai_answer(context, question):
-    instruction = """
-    Provide a specific, actionable hint that helps solve the question without revealing the complete answer.
-    - The hint should point to a key concept, method, or first step needed to solve the problem.
-    - Include relevant technical details, formulas, or approaches when appropriate.
-    - Avoid generic advice like "consider the problem carefully" or "break it down."
-    - Provide concrete direction that actually advances the solution process.
-    - Do NOT mention that you are providing a hint.
-    - Do NOT refer to any context or external sources.
+     instruction = """
+    Answer the question using only the given information.
+    - If the correct answer is present in the context, provide it concisely.
+    - If the correct answer is NOT in the context, respond with exactly: 'I am not aware about it.'
+    - Do NOT mention the context or refer to external sources.
     """
     return ai_response(context, instruction, question, "###answer", 1024)
 
