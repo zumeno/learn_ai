@@ -105,7 +105,7 @@ def ai_verdict(context, question, user_answer, feedback):
     - If the user's answer is incorrect, respond with 'Incorrect'.
     - Do NOT provide additional explanations.
     """
-    return ai_response(context, f"{question}\n###user_answer:{user_answer}\n###feedback{feedback}", instruction, "###verdict")
+    return ai_response(context, instruction, f"{question}\n###user_answer:{user_answer}\n###feedback{feedback}", "###verdict")
 
 def split_into_chunks(text, chunk_size):
     sentences = sent_tokenize(text)
