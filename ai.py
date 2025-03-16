@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 from huggingface_hub import login
-from transformers import AutoTokenizer, Gemma3ForCausalLM, BitsAndBytesConfig 
+from transformers import AutoTokenizer, Gemma3ForCausalLM 
 import torch
 from torch.cuda.amp import autocast
 import torch._dynamo
@@ -24,16 +24,8 @@ def initialize_model():
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_compute_dtype=torch.float16, 
-        bnb_4bit_use_double_quant=True,  
-        bnb_4bit_quant_type="nf4"  
-    )
-
     model = Gemma3ForCausalLM.from_pretrained(
         model_name,
-        quantization_config=bnb_config,
         device_map="balanced"
     )
 
@@ -57,7 +49,7 @@ def ai_generate(input_text, max_new_tokens):
 
 def ai_response(context, instruction, question, response_key, max_new_tokens):
     template = f"""
-    ###guideline: Never mention that you were given a context or instructions. Respond naturally as if you are directly addressing the user as in you are talking to him/her.Also remember that you are not responding to anyone except the user.Also please avoid the usage of unnecessary symbols like # at the end.
+    ###guideline: Never mention that you were given a context or instructions. Respond naturally as if you are directly addressing the user as in you are talking to him/her.Also remember that you are not responding to anyone except the user.Also please avoid the usage of unnecessary symbols like # at the end.(Dont add unneessary sections you are supposed to only do what you are asked)
     ###context:{context}
     ###instruction:{instruction}
     ###length: short
@@ -102,10 +94,12 @@ def ai_feedback(context, question, user_answer):
 
 def ai_verdict(context, question, user_answer, feedback):
     instruction = """
-    Based on the correct answer found in the context and the provided feedback, determine if the user's answer conveys the same meaning.
-    - If the user's answer is correct, respond with 'Correct'.
-    - If the user's answer is incorrect, respond with 'Incorrect'.
-    - Do NOT provide additional explanations.
+    Evaluate the user's answer based on the information in the context.
+    - Infer the intended question from the user's answer and the context.
+    - Identify all missing, incorrect, or inaccurate points in the user's answer without unnecessary leniency.
+    - Provide clear and constructive feedback under the section '###feedback'.
+    - Respond naturally as if you are directly addressing the user.
+    - Do NOT mention that you are referring to the context or inferring the question.
     """
     return ai_response(context, instruction, f"{question}\n###user_answer:{user_answer}\n###feedback{feedback}", "###verdict", 32)
 
