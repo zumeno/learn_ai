@@ -100,12 +100,10 @@ def ai_feedback(context, question, user_answer):
 
 def ai_verdict(context, question, user_answer, feedback):
     instruction = """
-    Evaluate the user's answer based on the information in the context.
-    - Infer the intended question from the user's answer and the context.
-    - Identify all missing, incorrect, or inaccurate points in the user's answer without unnecessary leniency.
-    - Provide clear and constructive feedback under the section '###feedback'.
-    - Respond naturally as if you are directly addressing the user.
-    - Do NOT mention that you are referring to the context or inferring the question.
+    Based on the correct answer found in the context and the provided feedback, determine if the user's answer conveys the same meaning.
+    - If the user's answer is correct, respond with 'Correct'.
+    - If the user's answer is incorrect, respond with 'Incorrect'.
+    - Do NOT provide additional explanations.
     """
     return ai_response(context, instruction, f"{question}\n###user_answer:{user_answer}\n###feedback{feedback}", "###verdict", 32)
 
