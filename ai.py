@@ -25,11 +25,7 @@ def initialize_model():
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-
-    model = Gemma3ForCausalLM.from_pretrained(
-        model_name,
-        device_map="balanced"
-    )
+    model = Gemma3ForCausalLM.from_pretrained(model_name, device_map="balanced")
 
     return model, tokenizer, device
 
@@ -49,6 +45,16 @@ def ai_generate(input_text, max_new_tokens):
 
     return tokenizer.decode(outputs[0], skip_special_tokens=True)
 
+def clean_response(response, response_key):
+    output = response.split(f"{response_key}:", 1)[-1].strip()
+
+    output = re.sub(r'###.*', '', output)
+
+    lines = output.splitlines()
+    non_empty_lines = [line for line in lines if line.strip()]
+
+    return '\n'.join(non_empty_lines)
+
 def ai_response(context, instruction, question, response_key, max_new_tokens):
     template = f"""
     ###guideline: Never mention that you were given a context or instructions. Respond naturally as if you are directly addressing the user as in you are talking to him/her.Also remember that you are not responding to anyone except the user.Also please avoid the usage of unnecessary symbols like # at the end.
@@ -58,14 +64,7 @@ def ai_response(context, instruction, question, response_key, max_new_tokens):
     ###question:{question}
     {response_key}:
     """
-    response = ai_generate(template, max_new_tokens) 
-
-    output = response.split(f"{response_key}:", 1)[-1].strip()
-    output = re.sub(r'###.*', '', output)
-    
-    lines = output.splitlines()  
-    non_empty_lines = [line for line in lines if line.strip()]  
-    return '\n'.join(non_empty_lines)
+    return clean_response(ai_generate(template, max_new_tokens), response_key)
 
 def ai_answer(context, question):
     instruction = """
@@ -164,7 +163,8 @@ def generate_questions_and_answers(context, chunk_size=8192, batch_size=4):
             for qa in qa_list:
                 if "Answer:" in qa:
                     question, answer = qa.split("Answer:", 1)
-                    qa_pairs[question.strip()] = answer.strip()
+                    qa_pairs[question.strip()] = re.sub(r'###.*', '', answer.strip())
+                    
 
         torch.cuda.empty_cache()
 
