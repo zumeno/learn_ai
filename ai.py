@@ -1,14 +1,16 @@
 from dotenv import load_dotenv
 from huggingface_hub import login
-from transformers import AutoTokenizer, Gemma3ForCausalLM 
+from transformers import AutoTokenizer, Gemma3ForCausalLM, BitsAndBytesConfig  
 import torch
 from torch.cuda.amp import autocast
 import torch._dynamo
 from nltk.tokenize import sent_tokenize
 import os
 import time
+import re
 
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+torch.set_float32_matmul_precision('high')
 torch._dynamo.config.suppress_errors = True
 
 load_dotenv()
@@ -24,8 +26,16 @@ def initialize_model():
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_compute_dtype=torch.bfloat16, 
+        bnb_4bit_quant_type="nf4", 
+        bnb_4bit_use_double_quant=True 
+    )
+
     model = Gemma3ForCausalLM.from_pretrained(
         model_name,
+        quantization_config=bnb_config,
         device_map="balanced"
     )
 
