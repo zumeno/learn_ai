@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 from huggingface_hub import login
-from transformers import AutoTokenizer, Gemma3ForCausalLM  
+from transformers import AutoTokenizer, Gemma3ForCausalLM, BitsAndBytesConfig  
 import torch
 from torch.cuda.amp import autocast
 import torch._dynamo
@@ -20,14 +20,22 @@ os.environ['HUGGINGFACEHUB_API_TOKEN'] = HUGGINGFACEHUB_API_TOKEN
 login(HUGGINGFACEHUB_API_TOKEN)
 
 def initialize_model():
-    model_name = "arunchess/gemma3-1b-it-4bit"
+    model_name = "google/gemma-3-1b-it"
     
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_compute_dtype=torch.bfloat16, 
+        bnb_4bit_quant_type="nf4", 
+        bnb_4bit_use_double_quant=True 
+    )
+
     model = Gemma3ForCausalLM.from_pretrained(
         model_name,
+        quantization_config=bnb_config,
         device_map="balanced"
     )
 
