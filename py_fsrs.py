@@ -1,5 +1,6 @@
 from fsrs import Scheduler, Card, Rating, ReviewLog
 from datetime import timedelta, datetime, timezone
+import json
 
 def initializeFSRS() :
     scheduler = Scheduler(
@@ -11,10 +12,6 @@ def initializeFSRS() :
         enable_fuzzing = True
     )
     return scheduler
-
-def getRating(rating):
-    ratings = {"again": Rating.Again, "hard": Rating.Hard, "good": Rating.Good, "easy": Rating.Easy}
-    return ratings.get(rating.lower(), None)
 
 def reviewCard(scheduler, card, rating):
     card, review_log = scheduler.review_card(card, rating)
@@ -32,3 +29,5 @@ def getNextReviewInterval(scheduler, card, rating):
         interval = f"{round(interval_seconds / 86400)} days"
 
     return interval
+
+scheduler = initializeFSRS()
