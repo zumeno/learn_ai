@@ -53,8 +53,11 @@ def store_qa_pairs(tier, username, collection_name, file_path):
     qa_pairs = generate_questions_and_answers(text)
 
     for question, answer in qa_pairs.items():
-        card = Card()  
-        metadata = {"answer": answer, **card.to_dict()}
+        card_dict = Card().to_dict() 
+
+        filtered_card_dict = {k: v for k, v in card_dict.items() if v is not None}
+        metadata = {"answer": answer, **filtered_card_dict}
+
         collection.add(
             documents=[question],
             metadatas=[metadata],
@@ -62,12 +65,12 @@ def store_qa_pairs(tier, username, collection_name, file_path):
         )
 
 def get_next_card(username, collection_name):
-    collection = get_collection(f"{username}.{collection_name}.qa")
+    collection = get_or_create_collection(f"{username}.{collection_name}.qa")
     items = collection.get()
     cards = []
     
     for id, doc, metadata in zip(items['ids'], items['documents'], items['metadatas']):
-        card_dict = {k: metadata[k] for k in Card().to_dict().keys()}
+        card_dict = {k: metadata.get(k, None) for k in Card().to_dict().keys()}
         card = Card.from_dict(card_dict)
         cards.append({
             'id': id,
@@ -80,14 +83,18 @@ def get_next_card(username, collection_name):
     return sorted_cards[0] if sorted_cards else None
 
 def update_card(username, collection_name, card_id, rating):
-    collection = get_collection(f"{username}.{collection_name}.qa")
+    collection = get_or_create_collection(f"{username}.{collection_name}.qa")
     item = collection.get(ids=[card_id])
     metadata = item['metadatas'][0]
     
-    card_dict = {k: metadata[k] for k in Card().to_dict().keys()}
+    card_dict = {k: metadata[k] for k in metadata.keys() if k in Card().to_dict().keys()}
+    card_dict = {k: metadata.get(k, None) for k in Card().to_dict().keys()}
     card = Card.from_dict(card_dict)
     
-    new_card = reviewCard(scheduler, card, rating) 
-    
-    new_metadata = {"answer": metadata['answer'], **new_card.to_dict()}
+    new_card, _ = reviewCard(scheduler, card, rating) 
+    new_card_dict = new_card.to_dict()
+   
+    filtered_card_dict = {k: v for k, v in new_card_dict.items() if v is not None}
+
+    new_metadata = {"answer": metadata['answer'], **filtered_card_dict}
     collection.update(ids=[card_id], metadatas=[new_metadata])
