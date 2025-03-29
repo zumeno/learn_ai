@@ -81,7 +81,6 @@ def ai_hint(context, question, correct_answer):
     Provide a hint to help answer the question without giving away the correct/full answer.
     - The hint should be useful but should not explicitly state the answer.
     - Do NOT mention that you are providing a hint.
-    - Do NOT provide a hide which reveals the correct answer directly.
     - Do NOT refer to any context or external sources.
     - Keep your response concise and focused on one key insight.
     - Do not create any new unnecessary sections we just need the hint(that means strictly no answer,questions or anything else which are not part of the hint)
@@ -101,7 +100,7 @@ def ai_feedback(context, question, user_answer, correct_answer):
 
 def ai_verdict(context, question, user_answer, correct_answer, feedback):
     instruction = """
-    Based on the correct answer, the context and the provided feedback, determine if the user's answer conveys the same meaning.
+    Based on the correct answer found in the context and the provided feedback, determine if the user's answer conveys the same meaning.
     - If the user's answer is correct, respond with 'Correct'.
     - If the user's answer is incorrect, respond with 'Incorrect'.
     - Do NOT provide additional explanations.
@@ -110,7 +109,7 @@ def ai_verdict(context, question, user_answer, correct_answer, feedback):
 
 def ai_predict_rating(context, question, user_answer, correct_answer, feedback, verdict):
     instruction = """
-    Based on the correct answer and the context, provided feedback and verdict predict which rating the user will give which will be passed to the fsrs algorithm.
+    Based on the correct answer found in the context, provided feedback and verdict predict which rating the user will give which will be passed to the fsrs algorithm.
     Consider these rating categories:
     - 'again' if the user's answer was completely wrong or they couldn't answer at all, indicating they need to see this item again soon
     - 'hard' if the user's answer was partially correct but with significant difficulty or important mistakes
@@ -172,7 +171,9 @@ def generate_questions_and_answers(context, chunk_size=8192, batch_size=4):
 
         for response in batch_responses:
             qa_list = response.rsplit("###qa_pairs:", 1)[-1].strip().split("Question:")
-            for qa in qa_list:
+            for index, qa in enumerate(qa_list):
+                if index == 0:  
+                    continue
                 if "Answer:" in qa:
                     question, answer = qa.split("Answer:", 1)
                     qa_pairs[question.strip()] = re.sub(r'###.*', '', answer.strip())

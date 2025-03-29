@@ -22,7 +22,7 @@ def get_context(collection, input_text):
         query_texts=[input_text],
         n_results=2
     )
-    return query_results['text']
+    return query_results['documents']
 
 DB_STORE_PATH = get_db_store_path()
 print(f"DB_STORE_PATH: {DB_STORE_PATH}")

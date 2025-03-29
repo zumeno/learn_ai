@@ -23,25 +23,7 @@ def store_document(username, collection_name, file_path):
             ids=str(collection.count()+1000),
         )
 
-def store_qa_pairs(tier, username, collection_name, file_path):
-    collection = get_or_create_collection(f"{username}.{collection_name}.qa")
-    text = ""
-
-    if file_path.lower().endswith(".docx"):
-        text = read_docx(file_path)
-    elif file_path.lower().endswith(".pdf"):
-        text = read_pdf(file_path)
-   
-    qa_pairs = generate_questions_and_answers(text)
-
-    for question, answer in qa_pairs.items():
-        collection.add(
-            documents=question,  
-            metadatas={"answer": answer},  
-            ids=str(collection.count() + 1000),  
-        )
-
-def store_qa_pairs(tier, username, collection_name, file_path):
+def store_qa_pairs(username, collection_name, file_path):
     collection = get_or_create_collection(f"{username}.{collection_name}.qa")
     text = ""
 
