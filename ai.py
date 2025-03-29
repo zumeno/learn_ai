@@ -76,18 +76,19 @@ def ai_answer(context, question):
     """
     return ai_response(context, instruction, question, "###answer", 1024)
 
-def ai_hint(context, question):
+def ai_hint(context, question, correct_answer):
     instruction = """
-    Provide a hint to help answer the question without giving away the full answer.
+    Provide a hint to help answer the question without giving away the correct/full answer.
     - The hint should be useful but should not explicitly state the answer.
     - Do NOT mention that you are providing a hint.
+    - Do NOT provide a hide which reveals the correct answer directly.
     - Do NOT refer to any context or external sources.
     - Keep your response concise and focused on one key insight.
     - Do not create any new unnecessary sections we just need the hint(that means strictly no answer,questions or anything else which are not part of the hint)
     """
-    return ai_response(context, instruction, question, "###hint", 512)
+    return ai_response(context, instruction, f"{question}\n###correct_answer:{correct_answer}", "###hint", 512)
 
-def ai_feedback(context, question, user_answer):
+def ai_feedback(context, question, user_answer, correct_answer):
     instruction = """
     Evaluate the user's answer with complete objectivity and strict factual accuracy.
     - Detect all factual errors, missing details, and inaccuracies without compromise.
@@ -96,16 +97,29 @@ def ai_feedback(context, question, user_answer):
     - Provide feedback in a clear, straightforward, and constructive manner under the section '###feedback'.
     - If the answer is completely wrong, explicitly state so and explain the correct answer.
     """
-    return ai_response(context, instruction, f"{question}\n###user_answer:{user_answer}", "###feedback", 1024)
+    return ai_response(context, instruction, f"{question}\n###user_answer:{user_answer}\n###correct_answer:{correct_answer}", "###feedback", 1024)
 
-def ai_verdict(context, question, user_answer, feedback):
+def ai_verdict(context, question, user_answer, correct_answer, feedback):
     instruction = """
-    Based on the correct answer found in the context and the provided feedback, determine if the user's answer conveys the same meaning.
+    Based on the correct answer, the context and the provided feedback, determine if the user's answer conveys the same meaning.
     - If the user's answer is correct, respond with 'Correct'.
     - If the user's answer is incorrect, respond with 'Incorrect'.
     - Do NOT provide additional explanations.
     """
-    return ai_response(context, instruction, f"{question}\n###user_answer:{user_answer}\n###feedback{feedback}", "###verdict", 32)
+    return ai_response(context, instruction, f"{question}\n###user_answer:{user_answer}\n###correct_answer{correct_answer}\n###feedback{feedback}", "###verdict", 32)
+
+def ai_predict_rating(context, question, user_answer, correct_answer, feedback, verdict):
+    instruction = """
+    Based on the correct answer and the context, provided feedback and verdict predict which rating the user will give which will be passed to the fsrs algorithm.
+    Consider these rating categories:
+    - 'again' if the user's answer was completely wrong or they couldn't answer at all, indicating they need to see this item again soon
+    - 'hard' if the user's answer was partially correct but with significant difficulty or important mistakes
+    - 'good' if the user's answer was mostly correct with minor mistakes or some hesitation
+    - 'easy' if the user's answer was completely correct without hesitation and the user found it trivial
+    Also consider the feedback provided and the verdict (correct/incorrect) in your prediction.
+    The rating should reflect how difficult the user found the item based on their performance.
+    """
+    return ai_response(context, instruction, f"{question}\n###user_answer:{user_answer}\n###correct_answer{correct_answer}\n###feedback{feedback}\n###verdict:{verdict}", "###rating", 32)
 
 def split_into_chunks(text, chunk_size):
     sentences = sent_tokenize(text)
