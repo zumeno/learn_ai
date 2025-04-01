@@ -109,14 +109,19 @@ def ai_verdict(context, question, user_answer, correct_answer, feedback):
 
 def ai_predict_rating(context, question, user_answer, correct_answer, feedback, verdict):
     instruction = """
-    Based on the correct answer found in the context, provided feedback and verdict predict which rating the user will give which will be passed to the fsrs algorithm.
-    Consider these rating categories:
-    - 'again' if the user's answer was completely wrong or they couldn't answer at all, indicating they need to see this item again soon
-    - 'hard' if the user's answer was partially correct but with significant difficulty or important mistakes
-    - 'good' if the user's answer was mostly correct with minor mistakes or some hesitation
-    - 'easy' if the user's answer was completely correct without hesitation and the user found it trivial
-    Also consider the feedback provided and the verdict (correct/incorrect) in your prediction.
-    The rating should reflect how difficult the user found the item based on their performance.
+    Predict exactly one rating based on the user's performance. Follow these strict rules:
+    1. 'again' - Totally incorrect answer or no answer
+    2. 'hard' - Partially correct with significant errors/hesitation
+    3. 'good' - Mostly correct with minor mistakes
+    4. 'easy' - Perfect answer with confidence
+    
+    Consider these factors:
+    - Verdict: {verdict}
+    - Feedback analysis: {feedback}
+    - Comparison between user's answer and correct answer
+    
+    Respond ONLY with the exact rating word in lowercase: 'again', 'hard', 'good', or 'easy'.
+    No explanations. No multiple answers.
     """
     return ai_response(context, instruction, f"{question}\n###user_answer:{user_answer}\n###correct_answer{correct_answer}\n###feedback{feedback}\n###verdict:{verdict}", "###rating", 32)
 
